@@ -1,23 +1,49 @@
 import cv2, os
 
+class Channel:
+    def __init__(self, channel):
+        Camera.channels.append(channel)
+        self.cameraChannelDataStack = []
+    
+    def getChannel(self):
+        return self.curChannel
+    
+    def appendData(self, analysis):
+        self.cameraChannelDataStack.append(analysis)
+
+    def popData(self):
+        return None if self.cameraChannelDataStack else self.cameraChannelDataStack.pop()
+ 
+    def dataStackSize(self):
+        return len(self.cameraChannelDataStack)
+
+    def isChannelNum(self, channel):
+        return self.curChannel == channel
+
+    def fetchChannelObject(channel):
+        for ch in Camera.channels:
+            if ch.isChannelNum(channel):
+                return ch
+        return None
+
 class Camera:
     channels = []
-
     def __init__(self, channel, name="Camera"):
-        self.channels.append(channel)
+        self.channels.append(Channel(channel))
         self.name = name
-        self.curChannel = channel
+        self.curChannel = Channel.fetchChannelObject(channel)
 
     def switchChannel(self, channel):
-        if channel not in Camera.channels:
+        channelObj = Channel.fetchChannelObject(channel)
+        if channelObj is None:
             return None
 
         self.camObj.release()
-        self.curChannel = channel
-        self.camObj = cv2.VideoCapture(self.curChannel)
+        self.curChannel = channelObj
+        self.camObj = cv2.VideoCapture(self.curChannel.getChannel())
 
-    def getImageBytes(self):
-        IMAGE_NAME = "/home/pi/CrossWalker/Images/placeholder"
+    def createImage(self):
+        IMAGE_NAME = "/home/pi/CrossWalker/Images/placeholder{self.getChannel()}"
         IMAGE_EXTENSION = ".jpg"
         ret, image = self.camObj.read()
         
@@ -27,9 +53,6 @@ class Camera:
         else:
             return None
         
-        with open(IMAGE_NAME + IMAGE_EXTENSION, 'rb') as f:
-            imageBytes = f.read()
-        
-        os.remove(IMAGE_NAME + IMAGE_EXTENSION) #removes placeholder
-        
-        return imageBytes
+        return IMAGE_NAME + IMAGE_EXTENSION
+    
+    

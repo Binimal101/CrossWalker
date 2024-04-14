@@ -16,25 +16,28 @@ def main():
     ser = serial.Serial(SERPATH, 9600, timeout=0.5)
     
     while True:
-        Camera.switchChannel(Camera.channels[ch])
-        ch = (( (ch / 2) % 3) * 2) + 2 # oscillates between 2, 4, 6
+        Camera.switchChannel(Camera.channels[ch]) #starts at 0
+        ch = ( ch % len(Camera.channels) ) + 1 # oscillates between cameras
 
-        enviroment = analyze(Camera.getImageBytes())
-        command = getCommand(enviroment)
-        commandNumber += 1
+        analysis = analyze(Camera.createImage()) #creates image and passes dir into analyze
+        Camera.curChannel.pushData(analysis)
 
-        """
-        Transmit command to either of the following formats:
-        
-        move forward ::= FORWARD
-        discontinue movement or remain still ::= STOP
-        turn by float angle off vertical axis (birds eye) ::= TURN (degrees: float)
-        move backwards ::= BACKWARD
-        next command ::= \n
-        """
+        if(Camera.curChannel.dataStackSize() > 1): #has previous data
+            command = getCommand(Camera.curChannel)
+            commandNumber += 1
 
-        #sends command info and priority num to Arduino
-        ser.write((commandNumber+command+'\n').encode('utf-8'))
+            """
+            Transmit command to either of the following formats:
+            
+            move forward ::= FORWARD
+            discontinue movement or remain still ::= STOP
+            turn by float angle off vertical axis (birds eye) ::= TURN (degrees: float)
+            move backwards ::= BACKWARD
+            next command ::= \n
+            """
+
+            #sends command info and priority num to Arduino
+            ser.write((commandNumber+command+'\n').encode('utf-8'))
 
     ser.close()
 
